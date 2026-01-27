@@ -5,14 +5,14 @@ import { Colors, Spacing, Typography } from '@/constants/colors';
 import { SectionHeader } from '@/components/SectionHeader';
 import { Card } from '@/components/Card';
 
-export default function GroupsScreen() {
+export default function GroupWithdrawalsScreen() {
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Group Accounts' }} />
+      <Stack.Screen options={{ title: 'Withdrawal Requests' }} />
       <View style={styles.content}>
-        <SectionHeader title="My Groups" />
+        <SectionHeader title="Pending Requests" />
         <Card>
-          <Text style={styles.placeholderText}>Group overview coming soon.</Text>
+          <Text style={styles.placeholderText}>Review withdrawal requests here.</Text>
         </Card>
       </View>
     </View>

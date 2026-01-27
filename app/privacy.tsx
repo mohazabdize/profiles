@@ -2,17 +2,17 @@ import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { Stack } from 'expo-router';
 import { Colors, Spacing, Typography } from '@/constants/colors';
-import { SectionHeader } from '@/components/SectionHeader';
 import { Card } from '@/components/Card';
+import { SectionHeader } from '@/components/SectionHeader';
 
-export default function GroupsScreen() {
+export default function PrivacyScreen() {
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Group Accounts' }} />
+      <Stack.Screen options={{ title: 'Privacy Controls' }} />
       <View style={styles.content}>
-        <SectionHeader title="My Groups" />
+        <SectionHeader title="Data Sharing" />
         <Card>
-          <Text style={styles.placeholderText}>Group overview coming soon.</Text>
+          <Text style={styles.placeholderText}>Manage your data sharing preferences here.</Text>
         </Card>
       </View>
     </View>

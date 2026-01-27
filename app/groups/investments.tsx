@@ -5,14 +5,14 @@ import { Colors, Spacing, Typography } from '@/constants/colors';
 import { SectionHeader } from '@/components/SectionHeader';
 import { Card } from '@/components/Card';
 
-export default function GroupsScreen() {
+export default function GroupInvestmentsScreen() {
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Group Accounts' }} />
+      <Stack.Screen options={{ title: 'Group Investments' }} />
       <View style={styles.content}>
-        <SectionHeader title="My Groups" />
+        <SectionHeader title="Investments" />
         <Card>
-          <Text style={styles.placeholderText}>Group overview coming soon.</Text>
+          <Text style={styles.placeholderText}>View your group portfolio here.</Text>
         </Card>
       </View>
     </View>

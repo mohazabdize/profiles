@@ -1,5 +1,4 @@
-// app/(tabs)/index.tsx
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -7,6 +6,7 @@ import {
   ScrollView, 
   TouchableOpacity,
   Animated,
+  Alert,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { 
@@ -37,16 +37,10 @@ import { SectionHeader } from '@/components/SectionHeader';
 import { MenuItem } from '@/components/MenuItem';
 import { StatCard } from '@/components/StatCard';
 import { mockUser, mockStats, mockNotifications, mockPendingActions } from '@/mocks/user';
-import { ConfirmationModal } from '@/components/profile/modals/logout confirmationmodal';
-import { LogoutToast } from '@/components/profile/toasts/logout toast';
-// import { ConfirmationModal } from '@/components/profile/modals/logoutconfirmationmodal';
-// import { LogoutToast } from '@/components/profile/toasts/LogoutToast'; 
 
 export default function ProfileScreen() {
   const router = useRouter();
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
     Animated.timing(progressAnim, {
@@ -62,33 +56,13 @@ export default function ProfileScreen() {
     outputRange: ['0%', '100%'],
   });
 
-  const handleLogout = () => {
-    // Close modal
-    setShowLogoutModal(false);
-    
-    // Show success toast
-    setTimeout(() => {
-      setShowToast(true);
-      
-      // In real app, you would:
-      // 1. Clear authentication tokens
-      // 2. Navigate to login screen
-      // 3. Reset navigation state
-      
-      console.log('User logged out successfully');
-    }, 300);
-  };
-
   return (
     <View style={styles.container}>
       <Stack.Screen 
         options={{
           title: 'Profile',
           headerRight: () => (
-            <TouchableOpacity 
-              onPress={() => router.push('/settings')}
-              style={styles.editButtonTouchable}
-            >
+            <TouchableOpacity onPress={() => router.push('/settings')}>
               <Text style={styles.editButton}>Edit</Text>
             </TouchableOpacity>
           ),
@@ -298,7 +272,23 @@ export default function ProfileScreen() {
         <TouchableOpacity 
           style={styles.logoutButton}
           activeOpacity={0.8}
-          onPress={() => setShowLogoutModal(true)}
+          onPress={() => {
+            Alert.alert(
+              'Logout',
+              'Are you sure you want to logout?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { 
+                  text: 'Logout', 
+                  style: 'destructive',
+                  onPress: () => {
+                    console.log('User logged out');
+                    Alert.alert('Success', 'You have been logged out successfully');
+                  }
+                },
+              ]
+            );
+          }}
         >
           <LogOut size={20} color={Colors.primary.red} />
           <Text style={styles.logoutText}>Logout</Text>
@@ -306,28 +296,6 @@ export default function ProfileScreen() {
 
         <View style={styles.footer} />
       </ScrollView>
-
-      {/* Confirmation Modal */}
-      <ConfirmationModal
-        visible={showLogoutModal}
-        title="Logout"
-        message="Are you sure you want to logout from your account? This action cannot be undone."
-        confirmText="Logout"
-        cancelText="Cancel"
-        type="danger"
-        onConfirm={handleLogout}
-        onCancel={() => setShowLogoutModal(false)}
-      />
-
-      {/* Toast Notification */}
-      {showToast && (
-        <LogoutToast
-          message="You have been logged out successfully"
-          type="success"
-          duration={3000}
-          onHide={() => setShowToast(false)}
-        />
-      )}
     </View>
   );
 }
@@ -344,14 +312,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingTop: Spacing.lg,
   },
-  editButtonTouchable: {
-    paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.sm,
-  },
   editButton: {
     ...Typography.bodyMedium,
     color: Colors.primary.blue,
     fontWeight: '600',
+    marginRight: Spacing.md,
   },
   profileHeader: {
     alignItems: 'center',
@@ -460,6 +425,51 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: Spacing.lg,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.md,
+  },
+  sectionTitle: {
+    ...Typography.heading2,
+    color: Colors.neutral.gray900,
+  },
+  sectionAction: {
+    ...Typography.bodyMedium,
+    color: Colors.primary.blue,
+    fontWeight: '600',
+  },
+  sectionList: {
+    marginBottom: Spacing.lg,
+  },
+  sectionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
+    backgroundColor: Colors.neutral.white,
+    borderWidth: 1.5,
+    borderColor: Colors.neutral.gray200,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.xl,
+    ...Shadows.level1, // Using level1 instead of xs/sm
+  },
+  sectionItemText: {
+    ...Typography.bodyLarge,
+    color: Colors.neutral.gray900,
+  },
+  sectionItemIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.neutral.gray50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -473,7 +483,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     marginTop: Spacing.xl,
     marginBottom: Spacing.xl,
-    ...Shadows.level1,
+    ...Shadows.level1, // Using level1 instead of xs/sm
   },
   logoutText: {
     ...Typography.bodyLarge,
@@ -481,6 +491,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.15,
   },
+  
   footer: {
     height: Spacing.lg,
   },

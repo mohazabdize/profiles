@@ -1,18 +1,20 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { Colors, Spacing, Typography } from '@/constants/colors';
 import { SectionHeader } from '@/components/SectionHeader';
 import { Card } from '@/components/Card';
 
-export default function GroupsScreen() {
+export default function TransactionsScreen() {
+  const router = useRouter();
+
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Group Accounts' }} />
+      <Stack.Screen options={{ title: 'Transaction History' }} />
       <View style={styles.content}>
-        <SectionHeader title="My Groups" />
+        <SectionHeader title="Recent Transactions" />
         <Card>
-          <Text style={styles.placeholderText}>Group overview coming soon.</Text>
+          <Text style={styles.placeholderText}>No transactions yet.</Text>
         </Card>
       </View>
     </View>
