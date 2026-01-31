@@ -1,9 +1,8 @@
-// app_layout.tsx
-import React, { useEffect } from "react";
-import { Platform } from "react-native";
+// template
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -26,27 +25,12 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   useEffect(() => {
-    // Hide splash screen
     SplashScreen.hideAsync();
-
-    // Safe KeepAwake activation
-    if (Platform.OS !== "android") {
-      // Only activate KeepAwake on supported platforms (iOS or web)
-      import("expo-keep-awake")
-        .then((mod) => {
-          try {
-            mod.activateKeepAwake();
-          } catch (e) {
-            console.warn("KeepAwake failed:", e);
-          }
-        })
-        .catch((e) => console.warn("KeepAwake module not available:", e));
-    }
   }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
+      <GestureHandlerRootView>
         <RootLayoutNav />
       </GestureHandlerRootView>
     </QueryClientProvider>

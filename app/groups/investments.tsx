@@ -12,7 +12,7 @@ export default function GroupInvestmentsScreen() {
       <View style={styles.content}>
         <SectionHeader title="Investments" />
         <Card>
-          <Text style={styles.placeholderText}>View your group portfolio here.</Text>
+          <Text style={styles.placeholderText}>pole pole inakuja</Text>
         </Card>
       </View>
     </View>

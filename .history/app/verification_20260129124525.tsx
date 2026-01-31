@@ -1,5 +1,8 @@
 /**
- * Verification Screen - Fully Scrollable Version
+ * Verification Screen
+ * 
+ * Main verification interface that orchestrates all verification components
+ * Integrates VerificationStep, VerificationStatus, VerificationForm, and DocumentUploader
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -32,7 +35,7 @@ import { Badge } from '@/components/Badge';
 import { VerificationStep, VerificationStepStatus } from '@/components/profile/verification/VerificationStep';
 import { VerificationStatus, VerificationStatusType, VerificationLevel } from '@/components/profile/verification/VerificationStatus';
 import { VerificationForm, FormStep } from '@/components/profile/verification/VerificationForm';
-import { DocumentUploader } from '@/components/profile/verification/DocumentUploader';
+import { DocumentUploader, DocumentFile, DocumentType } from '@/components/profile/verification/DocumentUploader';
 
 // Updated verification steps interface
 interface VerificationStepData {
@@ -368,14 +371,15 @@ const formSteps: FormStep[] = [
 export default function VerificationScreen() {
   const router = useRouter();
   const [currentStepIndex, setCurrentStepIndex] = useState(2);
-  const [formData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [uploadedDocuments, setUploadedDocuments] = useState<DocumentFile[]>([]);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   const currentStep = verificationSteps[currentStepIndex];
   const completedSteps = verificationSteps.filter(s => s.status === 'completed').length;
   const totalSteps = verificationSteps.length;
   const progressPercentage = (completedSteps / totalSteps) * 100;
-  const nextLevelUnlockAt = 4;
+  const nextLevelUnlockAt = 4; // Steps needed for next level
 
   // Calculate current verification level
   const currentLevel: VerificationLevel = completedSteps >= 5 ? 3 : completedSteps >= 3 ? 2 : 1;
@@ -396,6 +400,11 @@ export default function VerificationScreen() {
     }).start();
   }, [progressPercentage, progressAnim]);
 
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
+
   // Handle step press
   const handleStepPress = (index: number) => {
     const step = verificationSteps[index];
@@ -407,26 +416,52 @@ export default function VerificationScreen() {
   // Handle form submission
   const handleFormSubmit = async (data: Record<string, any>) => {
     console.log('Form submitted:', data);
+    // TODO: Integrate with your backend API
+    // Example:
+    // try {
+    //   const response = await fetch('/api/verification/submit', {
+    //     method: 'POST',
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify(data),
+    //   });
+    //   const result = await response.json();
+    //   console.log('Submission result:', result);
+    // } catch (error) {
+    //   console.error('Submission error:', error);
+    // }
   };
 
   // Handle draft save
   const handleSaveDraft = async (data: Record<string, any>) => {
     console.log('Draft saved:', data);
+    // TODO: Save to local storage or backend
+    // Example:
+    // await AsyncStorage.setItem('verification_draft', JSON.stringify(data));
   };
 
   // Handle document upload
-  const handleDocumentUpload = () => {
-    console.log('Document uploaded');
+  const handleDocumentUpload = (file: DocumentFile) => {
+    setUploadedDocuments(prev => {
+      const existingIndex = prev.findIndex(doc => doc.documentType === file.documentType);
+      if (existingIndex >= 0) {
+        const updated = [...prev];
+        updated[existingIndex] = file;
+        return updated;
+      }
+      return [...prev, file];
+    });
   };
 
   // Handle level press
   const handleLevelPress = (level: VerificationLevel) => {
     console.log('Level pressed:', level);
+    // Navigate to level details or show benefits
   };
 
   // Handle benefit press
   const handleBenefitPress = (benefit: { level: VerificationLevel; title: string; unlocked: boolean; icon: string }) => {
     console.log('Benefit pressed:', benefit);
+    // Show benefit details
   };
 
   // Render current step content
@@ -470,7 +505,7 @@ export default function VerificationScreen() {
     return null;
   };
 
-  // Filter benefits for current level
+  // Filter benefits for current level - Fixed type
   const currentBenefits = benefitsData
     .filter(benefit => benefit.level <= currentLevel)
     .map(benefit => ({
@@ -492,25 +527,24 @@ export default function VerificationScreen() {
         }}
       />
 
-      {/* Main ScrollView containing everything */}
+      {/* Verification Status Overview */}
+      <VerificationStatus
+        currentLevel={currentLevel}
+        progressPercentage={progressPercentage}
+        status={getOverallStatus()}
+        completedSteps={completedSteps}
+        totalSteps={totalSteps}
+        nextLevelUnlockAt={nextLevelUnlockAt}
+        benefits={currentBenefits}
+        onLevelPress={handleLevelPress}
+        onBenefitPress={handleBenefitPress}
+      />
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Verification Status Overview - Now inside ScrollView */}
-        <VerificationStatus
-          currentLevel={currentLevel}
-          progressPercentage={progressPercentage}
-          status={getOverallStatus()}
-          completedSteps={completedSteps}
-          totalSteps={totalSteps}
-          nextLevelUnlockAt={nextLevelUnlockAt}
-          benefits={currentBenefits}
-          onLevelPress={handleLevelPress}
-          onBenefitPress={handleBenefitPress}
-        />
-
         {/* Verification Steps Timeline */}
         <View style={styles.stepsContainer}>
           {verificationSteps.map((step, index) => (

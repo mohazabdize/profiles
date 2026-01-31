@@ -749,6 +749,7 @@ export const ColorUtils = {
   },
 };
 
+// Export all as default
 export default {
   Colors,
   Typography,
