@@ -10,6 +10,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Animated,
+  Dimensions,
   Platform,
   Alert,
   KeyboardAvoidingView,
@@ -115,6 +116,15 @@ const verificationSteps: VerificationStepData[] = [
     required: false,
     estimatedTime: '10-15 min',
   },
+];
+
+// Benefits data - Fixed type to match VerificationStatus component
+const benefitsData: { level: VerificationLevel; title: string; unlocked: boolean; icon: string }[] = [
+  { level: 1, title: 'Basic Transactions', unlocked: true, icon: 'transaction' },
+  { level: 1, title: 'KES 50,000 Daily Limit', unlocked: true, icon: 'limit' },
+  { level: 2, title: 'KES 150,000 Daily Limit', unlocked: false, icon: 'limit' },
+  { level: 2, title: 'Create Groups', unlocked: false, icon: 'group' },
+  { level: 3, title: 'Unlimited Transactions', unlocked: false, icon: 'unlimited' },
 ];
 
 // Helper function to convert string array to option objects
@@ -323,161 +333,16 @@ const formSteps: FormStep[] = [
   },
 ];
 
-// Custom VerificationForm component with horizontal steps
-interface CustomVerificationFormProps {
-  steps: FormStep[];
-  initialData: Record<string, any>;
-  onSubmit: (data: Record<string, any>) => Promise<{ success: boolean; message: string; }>;
-  onSaveDraft: (data: Record<string, any>) => Promise<void>;
-  showProgress: boolean;
-  verificationSteps: VerificationStepData[];
-  currentStepIndex: number;
-  onStepPress: (index: number) => void;
-}
-
-const CustomVerificationForm: React.FC<CustomVerificationFormProps> = ({
-  steps,
-  initialData,
-  onSubmit,
-  onSaveDraft,
-  showProgress,
-  verificationSteps,
-  currentStepIndex,
-  onStepPress,
-}) => {
-  const [formData] = useState(initialData);
-
-  // Check if all required fields in current step are filled
-  const isStepComplete = () => {
-    const currentFormStep = steps[0]; // We only show one step at a time
-    if (!currentFormStep) return false;
-
-    const requiredFields = currentFormStep.fields.filter(field => field.required);
-    
-    return requiredFields.every(field => {
-      const value = formData[field.id];
-      if (value === undefined || value === null || value === '') return false;
-      
-      // Additional validation
-      if (field.validation) {
-        if (field.validation.minLength && String(value).length < field.validation.minLength) return false;
-        if (field.validation.maxLength && String(value).length > field.validation.maxLength) return false;
-        if (field.validation.pattern && !field.validation.pattern.test(String(value))) return false;
-      }
-      
-      return true;
-    });
-  };
-
-  const renderStepIndicator = (step: VerificationStepData, index: number) => {
-    const isActive = index === currentStepIndex;
-    const isCompleted = step.status === 'completed';
-    const isPending = step.status === 'pending';
-    const isCurrentStepComplete = index === currentStepIndex ? isStepComplete() : false;
-    
-    return (
-      <TouchableOpacity
-        key={step.id}
-        style={[
-          styles.formStepIndicator,
-          isActive && styles.formStepIndicatorActive,
-          isCompleted && styles.formStepIndicatorCompleted,
-          isPending && styles.formStepIndicatorPending,
-        ]}
-        onPress={() => onStepPress(index)}
-        disabled={isPending}
-        activeOpacity={0.7}
-      >
-        <View style={styles.formStepIconContainer}>
-          {isCompleted || (isActive && isCurrentStepComplete) ? (
-            <CheckCircle size={16} color={Colors.neutral.white} />
-          ) : step.icon ? (
-            <step.icon 
-              size={16} 
-              color={
-                isCompleted ? Colors.neutral.white :
-                isActive ? Colors.primary.blue :
-                Colors.neutral.gray400
-              } 
-            />
-          ) : (
-            <Text style={[
-              styles.formStepNumber,
-              (isCompleted || (isActive && isCurrentStepComplete)) && styles.formStepNumberCompleted,
-              isActive && styles.formStepNumberActive,
-            ]}>
-              {step.order}
-            </Text>
-          )}
-        </View>
-        
-        <Text style={[
-          styles.formStepTitle,
-          isActive && styles.formStepTitleActive,
-          isCompleted && styles.formStepTitleCompleted,
-          isPending && styles.formStepTitlePending,
-        ]}>
-          {step.title}
-        </Text>
-        
-        {isActive && (
-          <View style={styles.formActiveIndicator} />
-        )}
-      </TouchableOpacity>
-    );
-  };
-
-  return (
-    <View style={styles.formContainer}>
-      {/* Horizontal Steps for Form */}
-      <View style={styles.formStepsHeader}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.formStepsScrollView}
-          contentContainerStyle={styles.formStepsContent}
-        >
-          {verificationSteps.map(renderStepIndicator)}
-        </ScrollView>
-        
-        {/* Progress Bar */}
-        <View style={styles.formProgressContainer}>
-          <View style={styles.formProgressBarBg}>
-            <Animated.View
-              style={[
-                styles.formProgressBarFill,
-                {
-                  width: `${(currentStepIndex + 1) / verificationSteps.length * 100}%`,
-                },
-              ]}
-            />
-          </View>
-          <Text style={styles.formProgressText}>
-            Step {currentStepIndex + 1} of {verificationSteps.length}
-          </Text>
-        </View>
-      </View>
-
-      {/* Original VerificationForm */}
-      <VerificationForm
-        steps={steps}
-        initialData={formData}
-        onSubmit={onSubmit}
-        onSaveDraft={onSaveDraft}
-        showProgress={showProgress}
-      />
-    </View>
-  );
-};
-
 export default function VerificationScreen() {
   const router = useRouter();
   const [currentStepIndex, setCurrentStepIndex] = useState(2);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
   
   const scrollViewRef = useRef<ScrollView>(null);
+  const stepScrollRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
@@ -507,7 +372,10 @@ export default function VerificationScreen() {
         AsyncStorage.setItem(STORAGE_KEYS.AUTO_SAVE_TIMESTAMP, timestamp.toString()),
       ]);
       
+      setLastSaved(new Date(timestamp).toLocaleTimeString());
       setHasUnsavedChanges(false);
+      
+      console.log('Auto-saved at:', new Date(timestamp).toLocaleTimeString());
     } catch {
       // Silent fail for auto-save
     }
@@ -518,9 +386,10 @@ export default function VerificationScreen() {
     const loadSavedData = async () => {
       try {
         setIsLoading(true);
-        const [savedData, savedStep] = await Promise.all([
+        const [savedData, savedStep, savedTimestamp] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.VERIFICATION_DATA),
           AsyncStorage.getItem(STORAGE_KEYS.CURRENT_STEP),
+          AsyncStorage.getItem(STORAGE_KEYS.AUTO_SAVE_TIMESTAMP),
         ]);
 
         if (savedData) {
@@ -531,6 +400,9 @@ export default function VerificationScreen() {
           if (!isNaN(stepIndex) && stepIndex < verificationSteps.length) {
             setCurrentStepIndex(stepIndex);
           }
+        }
+        if (savedTimestamp) {
+          setLastSaved(new Date(parseInt(savedTimestamp)).toLocaleTimeString());
         }
       } catch {
         // Silent fail for loading
@@ -569,9 +441,12 @@ export default function VerificationScreen() {
       }),
     ]).start();
 
-    // Scroll to top when changing steps
-    if (scrollViewRef.current) {
-      scrollViewRef.current.scrollTo({ y: 0, animated: true });
+    // Scroll to current step in horizontal scroller
+    if (stepScrollRef.current) {
+      stepScrollRef.current.scrollTo({
+        x: currentStepIndex * 100,
+        animated: true,
+      });
     }
   }, [currentStepIndex, fadeAnim, slideAnim]);
 
@@ -592,6 +467,11 @@ export default function VerificationScreen() {
     // Allow navigation to any completed or current step
     if (step.status !== 'pending') {
       setCurrentStepIndex(index);
+      
+      // Scroll to top when changing steps
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({ y: 0, animated: true });
+      }
     }
   };
 
@@ -639,6 +519,12 @@ export default function VerificationScreen() {
     }
   };
 
+  // Handle form data change
+  const handleFormChange = (data: Record<string, any>) => {
+    setFormData(prev => ({ ...prev, ...data }));
+    setHasUnsavedChanges(true);
+  };
+
   // Handle document upload
   const handleDocumentUpload = () => {
     console.log('Document uploaded');
@@ -649,6 +535,86 @@ export default function VerificationScreen() {
   const handleLevelPress = (level: VerificationLevel) => {
     console.log('Level pressed:', level);
   };
+
+  // Handle benefit press
+  const handleBenefitPress = (benefit: { level: VerificationLevel; title: string; unlocked: boolean; icon: string }) => {
+    console.log('Benefit pressed:', benefit);
+  };
+
+  // Render step indicator
+  const renderStepIndicator = (step: VerificationStepData, index: number) => {
+    const isActive = index === currentStepIndex;
+    const isCompleted = step.status === 'completed';
+    const isPending = step.status === 'pending';
+    
+    return (
+      <TouchableOpacity
+        key={step.id}
+        style={[
+          styles.stepIndicator,
+          isActive && styles.stepIndicatorActive,
+          isCompleted && styles.stepIndicatorCompleted,
+          isPending && styles.stepIndicatorPending,
+        ]}
+        onPress={() => handleStepPress(index)}
+        disabled={isPending}
+        activeOpacity={0.7}
+      >
+        <View style={styles.stepIconContainer}>
+          {step.icon ? (
+            <step.icon 
+              size={20} 
+              color={
+                isCompleted ? Colors.neutral.white :
+                isActive ? Colors.primary.blue :
+                Colors.neutral.gray400
+              } 
+            />
+          ) : (
+            <Text style={[
+              styles.stepNumber,
+              isCompleted && styles.stepNumberCompleted,
+              isActive && styles.stepNumberActive,
+            ]}>
+              {step.order}
+            </Text>
+          )}
+        </View>
+        
+        <View style={styles.stepTextContainer}>
+          <Text style={[
+            styles.stepTitle,
+            isActive && styles.stepTitleActive,
+            isCompleted && styles.stepTitleCompleted,
+            isPending && styles.stepTitlePending,
+          ]}>
+            {step.title}
+          </Text>
+          <Text style={[
+            styles.stepDescription,
+            isPending && styles.stepDescriptionPending,
+          ]}>
+            {step.description}
+          </Text>
+        </View>
+        
+        {isActive && (
+          <View style={styles.activeIndicator} />
+        )}
+        {isCompleted && (
+          <CheckCircle size={16} color={Colors.status.verifiedGreen} style={styles.completedIcon} />
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  // Filter benefits for current level
+  const currentBenefits = benefitsData
+    .filter(benefit => benefit.level <= currentLevel)
+    .map(benefit => ({
+      ...benefit,
+      unlocked: benefit.level === currentLevel ? benefit.unlocked : true
+    }));
 
   if (isLoading) {
     return (
@@ -687,6 +653,28 @@ export default function VerificationScreen() {
         }}
       />
 
+      {/* Fixed Horizontal Steps Navigation */}
+      <View style={styles.stepsHeader}>
+        <ScrollView
+          ref={stepScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.stepsScrollView}
+          contentContainerStyle={styles.stepsContent}
+        >
+          {verificationSteps.map(renderStepIndicator)}
+        </ScrollView>
+        
+        {/* Auto-save indicator */}
+        {lastSaved && (
+          <View style={styles.saveStatus}>
+            <Text style={styles.saveStatusText}>
+              Auto-saved {lastSaved}
+            </Text>
+          </View>
+        )}
+      </View>
+
       {/* Main Content */}
       <ScrollView
         ref={scrollViewRef}
@@ -696,7 +684,7 @@ export default function VerificationScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-          {/* Verification Status Overview (without benefits) */}
+          {/* Verification Status Overview */}
           <VerificationStatus
             currentLevel={currentLevel}
             progressPercentage={progressPercentage}
@@ -704,10 +692,12 @@ export default function VerificationScreen() {
             completedSteps={completedSteps}
             totalSteps={totalSteps}
             nextLevelUnlockAt={nextLevelUnlockAt}
+            benefits={currentBenefits}
             onLevelPress={handleLevelPress}
+            onBenefitPress={handleBenefitPress}
           />
 
-          {/* Current Step Form with Horizontal Navigation */}
+          {/* Current Step Form */}
           <Card style={styles.currentStepCard}>
             <View style={styles.currentStepHeader}>
               <View style={styles.currentStepIcon}>
@@ -729,17 +719,16 @@ export default function VerificationScreen() {
               />
             </View>
 
-            {/* Custom Form with Horizontal Steps */}
+            {/* Current Step Form */}
             {currentStep.status !== 'pending' && (
-              <CustomVerificationForm
+              <VerificationForm
                 steps={[formSteps[currentStepIndex]]}
                 initialData={formData}
                 onSubmit={handleFormSubmit}
                 onSaveDraft={handleSaveDraft}
+                onChange={handleFormChange}
                 showProgress={false}
-                verificationSteps={verificationSteps}
-                currentStepIndex={currentStepIndex}
-                onStepPress={handleStepPress}
+                autoSave={true}
               />
             )}
 
@@ -777,53 +766,6 @@ export default function VerificationScreen() {
               />
             </View>
           )}
-
-          {/* Benefits Section - Moved to bottom */}
-          <Card style={styles.benefitsCard}>
-            <View style={styles.benefitsHeader}>
-              <Award size={24} color={Colors.primary.blue} />
-              <Text style={styles.benefitsTitle}>Verification Benefits</Text>
-            </View>
-            
-            <View style={styles.benefitsGrid}>
-              <View style={styles.benefitItem}>
-                <View style={[styles.benefitLevelBadge, { backgroundColor: Colors.status.verifiedGreen }]}>
-                  <Text style={styles.benefitLevelText}>L1</Text>
-                </View>
-                <Text style={styles.benefitItemText}>KES 50,000 daily limit</Text>
-                <CheckCircle size={16} color={Colors.status.verifiedGreen} />
-              </View>
-              
-              <View style={styles.benefitItem}>
-                <View style={[styles.benefitLevelBadge, { backgroundColor: Colors.primary.blue }]}>
-                  <Text style={styles.benefitLevelText}>L2</Text>
-                </View>
-                <Text style={styles.benefitItemText}>KES 150,000 daily limit</Text>
-                {currentLevel >= 2 ? (
-                  <CheckCircle size={16} color={Colors.status.verifiedGreen} />
-                ) : (
-                  <Text style={styles.benefitLockedText}>Locked</Text>
-                )}
-              </View>
-              
-              <View style={styles.benefitItem}>
-                <View style={[styles.benefitLevelBadge, { backgroundColor: Colors.status.premiumPurple }]}>
-                  <Text style={styles.benefitLevelText}>L3</Text>
-                </View>
-                <Text style={styles.benefitItemText}>Unlimited transactions</Text>
-                {currentLevel >= 3 ? (
-                  <CheckCircle size={16} color={Colors.status.verifiedGreen} />
-                ) : (
-                  <Text style={styles.benefitLockedText}>Locked</Text>
-                )}
-              </View>
-            </View>
-            
-            <TouchableOpacity style={styles.viewAllBenefitsButton}>
-              <Text style={styles.viewAllBenefitsText}>View All Benefits</Text>
-              <ArrowLeft size={16} color={Colors.primary.blue} style={styles.arrowIcon} />
-            </TouchableOpacity>
-          </Card>
 
           {/* Navigation Buttons */}
           <View style={styles.navigationButtons}>
@@ -892,6 +834,122 @@ const styles = StyleSheet.create({
   saveButton: {
     padding: Spacing.xs,
   },
+  stepsHeader: {
+    backgroundColor: Colors.neutral.white,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.neutral.gray200,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  stepsScrollView: {
+    height: 80,
+  },
+  stepsContent: {
+    paddingHorizontal: Spacing.md,
+    alignItems: 'center',
+  },
+  saveStatus: {
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.sm,
+    alignItems: 'center',
+  },
+  saveStatusText: {
+    ...Typography.caption,
+    color: Colors.neutral.gray600,
+    fontStyle: 'italic',
+  },
+  stepIndicator: {
+    width: 100,
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+    borderRadius: BorderRadius.md,
+    marginRight: Spacing.md,
+    position: 'relative',
+  },
+  stepIndicatorActive: {
+    backgroundColor: Colors.primary.blue + '10',
+    borderWidth: 1,
+    borderColor: Colors.primary.blue,
+  },
+  stepIndicatorCompleted: {
+    backgroundColor: Colors.status.verifiedGreen + '10',
+    borderWidth: 1,
+    borderColor: Colors.status.verifiedGreen,
+  },
+  stepIndicatorPending: {
+    opacity: 0.6,
+  },
+  stepIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.neutral.gray100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  stepNumber: {
+    ...Typography.bodyMedium,
+    color: Colors.neutral.gray700,
+    fontWeight: '600',
+  },
+  stepNumberCompleted: {
+    color: Colors.neutral.white,
+  },
+  stepNumberActive: {
+    color: Colors.primary.blue,
+  },
+  stepTextContainer: {
+    alignItems: 'center',
+  },
+  stepTitle: {
+    ...Typography.bodySmall,
+    color: Colors.neutral.gray900,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  stepTitleActive: {
+    color: Colors.primary.blue,
+  },
+  stepTitleCompleted: {
+    color: Colors.status.verifiedGreen,
+  },
+  stepTitlePending: {
+    color: Colors.neutral.gray500,
+  },
+  stepDescription: {
+    ...Typography.caption,
+    color: Colors.neutral.gray700,
+    textAlign: 'center',
+    fontSize: 10,
+  },
+  stepDescriptionPending: {
+    color: Colors.neutral.gray500,
+  },
+  activeIndicator: {
+    position: 'absolute',
+    bottom: -4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.primary.blue,
+  },
+  completedIcon: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+  },
   scrollView: {
     flex: 1,
   },
@@ -930,106 +988,6 @@ const styles = StyleSheet.create({
     ...Typography.bodySmall,
     color: Colors.neutral.gray700,
   },
-  // Form Container Styles
-  formContainer: {
-    marginTop: Spacing.md,
-  },
-  formStepsHeader: {
-    marginBottom: Spacing.lg,
-  },
-  formStepsScrollView: {
-    height: 60,
-  },
-  formStepsContent: {
-    paddingBottom: Spacing.sm,
-    alignItems: 'center',
-  },
-  formStepIndicator: {
-    width: 80,
-    alignItems: 'center',
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.xs,
-    borderRadius: BorderRadius.md,
-    marginRight: Spacing.md,
-    position: 'relative',
-  },
-  formStepIndicatorActive: {
-    backgroundColor: Colors.primary.blue + '10',
-    borderWidth: 1,
-    borderColor: Colors.primary.blue,
-  },
-  formStepIndicatorCompleted: {
-    backgroundColor: Colors.status.verifiedGreen + '10',
-    borderWidth: 1,
-    borderColor: Colors.status.verifiedGreen,
-  },
-  formStepIndicatorPending: {
-    opacity: 0.6,
-  },
-  formStepIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.neutral.gray100,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.xs,
-  },
-  formStepNumber: {
-    ...Typography.bodySmall,
-    color: Colors.neutral.gray700,
-    fontWeight: '600',
-  },
-  formStepNumberCompleted: {
-    color: Colors.neutral.white,
-  },
-  formStepNumberActive: {
-    color: Colors.primary.blue,
-  },
-  formStepTitle: {
-    ...Typography.caption,
-    color: Colors.neutral.gray900,
-    fontWeight: '600',
-    textAlign: 'center',
-    fontSize: 11,
-  },
-  formStepTitleActive: {
-    color: Colors.primary.blue,
-  },
-  formStepTitleCompleted: {
-    color: Colors.status.verifiedGreen,
-  },
-  formStepTitlePending: {
-    color: Colors.neutral.gray500,
-  },
-  formActiveIndicator: {
-    position: 'absolute',
-    bottom: -4,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.primary.blue,
-  },
-  formProgressContainer: {
-    marginTop: Spacing.sm,
-  },
-  formProgressBarBg: {
-    height: 6,
-    backgroundColor: Colors.neutral.gray200,
-    borderRadius: BorderRadius.xs,
-    overflow: 'hidden',
-    marginBottom: Spacing.xs,
-  },
-  formProgressBarFill: {
-    height: '100%',
-    backgroundColor: Colors.primary.blue,
-    borderRadius: BorderRadius.xs,
-  },
-  formProgressText: {
-    ...Typography.caption,
-    color: Colors.neutral.gray600,
-    textAlign: 'center',
-  },
   pendingMessage: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1052,73 +1010,6 @@ const styles = StyleSheet.create({
     ...Typography.heading2,
     color: Colors.neutral.gray900,
     marginBottom: Spacing.md,
-  },
-  // Benefits Section
-  benefitsCard: {
-    padding: Spacing.lg,
-    marginBottom: Spacing.xl,
-  },
-  benefitsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: Spacing.lg,
-  },
-  benefitsTitle: {
-    ...Typography.heading2,
-    color: Colors.neutral.gray900,
-  },
-  benefitsGrid: {
-    gap: Spacing.md,
-    marginBottom: Spacing.lg,
-  },
-  benefitItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    backgroundColor: Colors.neutral.gray50,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.neutral.gray200,
-  },
-  benefitLevelBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: BorderRadius.sm,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  benefitLevelText: {
-    ...Typography.bodySmall,
-    color: Colors.neutral.white,
-    fontWeight: '700',
-  },
-  benefitItemText: {
-    ...Typography.bodyMedium,
-    color: Colors.neutral.gray900,
-    flex: 1,
-  },
-  benefitLockedText: {
-    ...Typography.caption,
-    color: Colors.neutral.gray500,
-    fontStyle: 'italic',
-  },
-  viewAllBenefitsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.xs,
-    padding: Spacing.sm,
-  },
-  viewAllBenefitsText: {
-    ...Typography.bodyMedium,
-    color: Colors.primary.blue,
-    fontWeight: '600',
-  },
-  arrowIcon: {
-    transform: [{ rotate: '180deg' }],
   },
   navigationButtons: {
     flexDirection: 'row',

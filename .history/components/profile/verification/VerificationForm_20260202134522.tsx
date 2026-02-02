@@ -277,6 +277,7 @@ export function VerificationForm({
   const slideAnim = useRef(new Animated.Value(0)).current;
   const successAnim = useRef(new Animated.Value(0)).current;
   const inputRefs = useRef<Record<string, TextInput>>({});
+  const containerWidthRef = useRef(0);
 
   // Constants
   const currentStepData = steps[currentStep];
@@ -343,29 +344,32 @@ export function VerificationForm({
     return () => clearInterval(saveInterval);
   }, [autoSaveInterval, onSaveDraft, hasChanges, handleSaveDraft]);
 
-  // Progress animation - FIXED: Use simple timing animation
+  // Progress animation - FIXED: Use useNativeDriver: true for width animation
   useEffect(() => {
-    // Use Animated.timing for simple progress animation
-    Animated.timing(progressAnim, {
+    // Instead of animating width with percentage, we animate a scale transform
+    // which works with the native driver
+    Animated.spring(progressAnim, {
       toValue: progressPercentage / 100, // Convert to 0-1 range
-      duration: 300,
       useNativeDriver: true,
+      tension: 100,
+      friction: 10,
+      mass: 1,
     }).start();
   }, [progressPercentage, progressAnim]);
 
-  // Slide animation on step change - FIXED: Use proper spring configuration
+  // Slide animation on step change
   useEffect(() => {
     if (enableHaptics && Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
 
     slideAnim.setValue(currentStep > 0 ? -50 : 50);
-    // Use only tension/friction parameters
     Animated.spring(slideAnim, {
       toValue: 0,
-      tension: 50,
-      friction: 7,
       useNativeDriver: true,
+      tension: 100,
+      friction: 10,
+      mass: 1,
     }).start();
 
     if (onStepChange) {
@@ -466,12 +470,11 @@ export function VerificationForm({
         if (enableHaptics) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
-        // FIXED: Use proper spring configuration for success animation
         Animated.spring(successAnim, {
           toValue: 1,
+          useNativeDriver: true,
           tension: 50,
           friction: 7,
-          useNativeDriver: true,
         }).start();
         setShowSuccess(true);
         
@@ -622,6 +625,12 @@ export function VerificationForm({
     outputRange: [0, 1],
   });
 
+  // Handle container layout to get width
+  const handleContainerLayout = useCallback((event: any) => {
+    const { width } = event.nativeEvent.layout;
+    containerWidthRef.current = width;
+  }, []);
+
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: themeStyles.background, maxWidth }]}
@@ -650,14 +659,14 @@ export function VerificationForm({
             </View>
           </View>
 
-          <View style={styles.progressBarContainer}>
+          <View style={styles.progressBarContainer} onLayout={handleContainerLayout}>
             <View style={styles.progressBarBg}>
               <Animated.View 
                 style={[
                   styles.progressBarFill,
                   {
                     transform: [{ scaleX: progressScale }],
-                    width: '100%',
+                    width: '100%', // Full width, scaled by transform
                   }
                 ]} 
               />
@@ -736,7 +745,7 @@ export function VerificationForm({
                   <Text style={[styles.fieldLabel as any, { color: themeStyles.text.primary }]}>
                     {field.label}
                     {field.required && <Text style={styles.requiredStar}> *</Text>}
-                </Text>
+                  </Text>
                 </View>
                 
                 {field.helperText && (
@@ -1046,7 +1055,8 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: AppColors.neutral.white,
     borderRadius: BorderRadius.xs,
-    transformOrigin: 'left' as 'left',
+    // Using transform scale instead of width percentage
+    transformOrigin: 'left',
   },
   progressDots: {
     flexDirection: 'row' as 'row',

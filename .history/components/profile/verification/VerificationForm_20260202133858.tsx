@@ -343,29 +343,30 @@ export function VerificationForm({
     return () => clearInterval(saveInterval);
   }, [autoSaveInterval, onSaveDraft, hasChanges, handleSaveDraft]);
 
-  // Progress animation - FIXED: Use simple timing animation
+  // Progress animation
   useEffect(() => {
-    // Use Animated.timing for simple progress animation
-    Animated.timing(progressAnim, {
-      toValue: progressPercentage / 100, // Convert to 0-1 range
-      duration: 300,
-      useNativeDriver: true,
+    Animated.spring(progressAnim, {
+      toValue: progressPercentage,
+      useNativeDriver: false,
+      tension: 100,
+      friction: 10,
+      mass: 1,
     }).start();
   }, [progressPercentage, progressAnim]);
 
-  // Slide animation on step change - FIXED: Use proper spring configuration
+  // Slide animation on step change
   useEffect(() => {
     if (enableHaptics && Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
 
     slideAnim.setValue(currentStep > 0 ? -50 : 50);
-    // Use only tension/friction parameters
     Animated.spring(slideAnim, {
       toValue: 0,
-      tension: 50,
-      friction: 7,
       useNativeDriver: true,
+      tension: 100,
+      friction: 10,
+      mass: 1,
     }).start();
 
     if (onStepChange) {
@@ -466,12 +467,11 @@ export function VerificationForm({
         if (enableHaptics) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
-        // FIXED: Use proper spring configuration for success animation
         Animated.spring(successAnim, {
           toValue: 1,
+          useNativeDriver: true,
           tension: 50,
           friction: 7,
-          useNativeDriver: true,
         }).start();
         setShowSuccess(true);
         
@@ -616,10 +616,10 @@ export function VerificationForm({
     );
   };
 
-  // Animated values - FIXED: Use transform scale instead of width percentage
-  const progressScale = progressAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1],
+  // Animated values
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
   });
 
   return (
@@ -652,15 +652,7 @@ export function VerificationForm({
 
           <View style={styles.progressBarContainer}>
             <View style={styles.progressBarBg}>
-              <Animated.View 
-                style={[
-                  styles.progressBarFill,
-                  {
-                    transform: [{ scaleX: progressScale }],
-                    width: '100%',
-                  }
-                ]} 
-              />
+              <Animated.View style={[styles.progressBarFill, { width: progressWidth }]} />
             </View>
             <View style={styles.progressDots}>
               {steps.map((_, index) => (
@@ -736,7 +728,7 @@ export function VerificationForm({
                   <Text style={[styles.fieldLabel as any, { color: themeStyles.text.primary }]}>
                     {field.label}
                     {field.required && <Text style={styles.requiredStar}> *</Text>}
-                </Text>
+                  </Text>
                 </View>
                 
                 {field.helperText && (
@@ -1046,7 +1038,6 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: AppColors.neutral.white,
     borderRadius: BorderRadius.xs,
-    transformOrigin: 'left' as 'left',
   },
   progressDots: {
     flexDirection: 'row' as 'row',
